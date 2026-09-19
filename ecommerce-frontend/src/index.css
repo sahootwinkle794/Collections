@@ -1,0 +1,4 @@
+:root { font-family: Georgia, 'Times New Roman', serif; color: #292824; background: #f6f2eb; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+#root { min-height: 100svh; }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
