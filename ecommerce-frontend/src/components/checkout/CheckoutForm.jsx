@@ -90,7 +90,12 @@ function CheckoutForm({ cart, subtotal, shipping, total, onPlaceOrder, onContinu
       <aside className="checkout-summary">
         <h2>Order summary</h2>
         <div className="checkout-items">
-          {cart.map((item) => <div key={`${item.id}-${item.size}`}><span>{item.name} × {item.quantity}</span><strong>{formatCurrency(item.price * item.quantity)}</strong></div>)}
+          {cart.map((item) => (
+            <div key={`${item.id}-${item.size}-${item.color ?? ''}`}>
+              <span>{item.name}{[item.size, item.color].filter(Boolean).map((variant) => ` · ${variant}`).join('')} × {item.quantity}</span>
+              <strong>{formatCurrency(item.price * item.quantity)}</strong>
+            </div>
+          ))}
         </div>
         <div className="summary-row"><span>Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
         <div className="summary-row"><span>Delivery</span><strong>{shipping === 0 ? 'Free' : formatCurrency(shipping)}</strong></div>

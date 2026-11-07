@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { products } from '../data/products'
+import { fetchCatalog } from '../api/catalog'
 
 export function useStorefront() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [selectedProductId, setSelectedProductId] = useState(products[0].id)
-  const [selectedSize, setSelectedSize] = useState(products[0].sizes[0])
+  const [products, setProducts] = useState([])
+  const [catalogStatus, setCatalogStatus] = useState('loading')
+  const [catalogError, setCatalogError] = useState('')
+  const [catalogRetry, setCatalogRetry] = useState(0)
+  const [selectedProductId, setSelectedProductId] = useState(null)
+  const [selectedSize, setSelectedSize] = useState('')
+  const [selectedColor, setSelectedColor] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState([])
@@ -20,6 +25,46 @@ export function useStorefront() {
     const parsedUser = savedUser ? JSON.parse(savedUser) : null
     return parsedUser?.fullName ? parsedUser : null
   })
+
+  useEffect(() => {
+    let isCurrentRequest = true
+
+    fetchCatalog()
+      .then((catalog) => {
+        if (isCurrentRequest) {
+          setProducts(catalog)
+          setCatalogStatus('ready')
+        }
+      })
+      .catch((error) => {
+        if (isCurrentRequest) {
+          setCatalogError(error.message)
+          setCatalogStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrentRequest = false
+    }
+  }, [catalogRetry])
+
+  useEffect(() => {
+    const refreshCatalogOnUserInteraction = () => {
+      if (document.visibilityState === 'visible') {
+        setCatalogError('')
+        setCatalogStatus('loading')
+        setCatalogRetry((current) => current + 1)
+      }
+    }
+
+    window.addEventListener('focus', refreshCatalogOnUserInteraction)
+    document.addEventListener('visibilitychange', refreshCatalogOnUserInteraction)
+
+    return () => {
+      window.removeEventListener('focus', refreshCatalogOnUserInteraction)
+      document.removeEventListener('visibilitychange', refreshCatalogOnUserInteraction)
+    }
+  }, [])
 
   const categorySlug = location.pathname.startsWith('/category/')
     ? location.pathname.split('/')[2]
@@ -86,7 +131,26 @@ export function useStorefront() {
     navigate('/login')
   }
 
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0]
+  const routeProductId = location.pathname.startsWith('/product/')
+    ? Number(location.pathname.split('/')[2])
+    : null
+  const selectedProduct = products.find((product) => product.id === routeProductId)
+    ?? products.find((product) => product.id === selectedProductId)
+  const effectiveSelectedColor = selectedProduct?.colors?.includes(selectedColor)
+    ? selectedColor
+    : selectedProduct?.colors?.[0] ?? ''
+  const matchingVariant = selectedProduct?.variants?.find(
+    (variant) => variant.color === effectiveSelectedColor && variant.size === selectedSize,
+  )
+  const effectiveSelectedSize = matchingVariant?.size
+    ?? selectedProduct?.variants?.find((variant) => variant.color === effectiveSelectedColor)?.size
+    ?? selectedProduct?.sizes?.[0]
+    ?? ''
+  const retryCatalog = () => {
+    setCatalogError('')
+    setCatalogStatus('loading')
+    setCatalogRetry((current) => current + 1)
+  }
 
   const cartCount = useMemo(() => cart.reduce((total, item) => total + item.quantity, 0), [cart])
   const subtotal = useMemo(() => cart.reduce((total, item) => total + item.price * item.quantity, 0), [cart])
@@ -101,29 +165,40 @@ export function useStorefront() {
     )
   }
 
-  const addToCart = (product, size = product.sizes?.[0] ?? 'One size') => {
+  const addToCart = (product, size = product.sizes?.[0] ?? 'One size', color = product.colors?.[0] ?? '') => {
+    const selectedVariantSize = size || product.sizes?.[0] || 'One size'
+    const selectedVariantColor = color || product.colors?.[0] || ''
+    const variant = product.variants?.find(
+      (item) => item.size === selectedVariantSize && item.color === selectedVariantColor,
+    ) ?? product.variants?.find((item) => item.size === selectedVariantSize)
+    const cartSize = variant?.size ?? selectedVariantSize
+    const cartColor = variant?.color ?? selectedVariantColor
+    const price = variant?.price ?? product.price
+
     setCart((current) => {
-      const existingItem = current.find((item) => item.id === product.id && item.size === size)
+      const existingItem = current.find((item) => (
+        item.id === product.id && item.size === cartSize && item.color === cartColor
+      ))
 
       if (existingItem) {
         return current.map((item) =>
-          item.id === product.id && item.size === size
-            ? { ...item, quantity: item.quantity + 1 }
+          item.id === product.id && item.size === cartSize && item.color === cartColor
+            ? { ...item, price, quantity: item.quantity + 1 }
             : item,
         )
       }
 
-      return [...current, { ...product, size, quantity: 1 }]
+      return [...current, { ...product, price, size: cartSize, color: cartColor, quantity: 1 }]
     })
 
     navigate('/cart')
   }
 
-  const updateCartQuantity = (id, size, delta) => {
+  const updateCartQuantity = (id, size, color, delta) => {
     setCart((current) =>
       current
         .map((item) =>
-          item.id === id && item.size === size
+          item.id === id && item.size === size && item.color === color
             ? { ...item, quantity: Math.max(item.quantity + delta, 0) }
             : item,
         )
@@ -152,11 +227,24 @@ export function useStorefront() {
   const handleDetailsClick = (productId) => {
     const nextProduct = products.find((product) => product.id === productId)
     setSelectedProductId(productId)
-    setSelectedSize(nextProduct?.sizes?.[0] ?? 'One size')
+    setSelectedSize(nextProduct?.sizes?.[0] ?? '')
+    setSelectedColor(nextProduct?.colors?.[0] ?? '')
     navigate(`/product/${productId}`)
   }
 
+  const selectColor = (color) => {
+    setSelectedColor(color)
+    const matchingColorVariants = selectedProduct?.variants?.filter((variant) => variant.color === color) ?? []
+    if (matchingColorVariants.length > 0 && !matchingColorVariants.some((variant) => variant.size === selectedSize)) {
+      setSelectedSize(matchingColorVariants[0].size)
+    }
+  }
+
   return {
+    products,
+    catalogStatus,
+    catalogError,
+    retryCatalog,
     page,
     categoryName,
     user,
@@ -168,8 +256,10 @@ export function useStorefront() {
     login,
     logout,
     selectedProduct,
-    selectedSize,
+    selectedSize: effectiveSelectedSize,
     setSelectedSize,
+    selectedColor: effectiveSelectedColor,
+    selectColor,
     activeCategory,
     setActiveCategory,
     search,

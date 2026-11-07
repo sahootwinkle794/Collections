@@ -12,11 +12,29 @@ import Checkout from './pages/Checkout'
 import Orders from './pages/Orders'
 import Tracking from './pages/Tracking'
 import OrderHistory from './pages/OrderHistory'
-import { products } from './data/products'
 import { useStorefront } from './hooks/useStorefront'
+
+function CatalogStatus({ status, error, onRetry }) {
+  return (
+    <section className="catalog-status" role={status === 'error' ? 'alert' : 'status'}>
+      {status === 'loading' ? (
+        <p>Loading the collection…</p>
+      ) : (
+        <>
+          <p>We couldn&apos;t load the collection. {error}</p>
+          <button type="button" className="primary-button" onClick={onRetry}>Try again</button>
+        </>
+      )}
+    </section>
+  )
+}
 
 function App() {
   const {
+    products,
+    catalogStatus,
+    catalogError,
+    retryCatalog,
     page,
     categoryName,
     user,
@@ -29,6 +47,8 @@ function App() {
     selectedProduct,
     selectedSize,
     setSelectedSize,
+    selectedColor,
+    selectColor,
     activeCategory,
     setActiveCategory,
     search,
@@ -83,17 +103,19 @@ function App() {
       />
 
       {page === 'home' && (
-        <Home
-          products={products}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-          onAddToCart={addToCart}
-          onViewDetails={handleDetailsClick}
-          onOpenCatalog={() => setPage('home')}
-          search={search}
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-        />
+        catalogStatus === 'ready' ? (
+          <Home
+            products={products}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            onAddToCart={addToCart}
+            onViewDetails={handleDetailsClick}
+            onOpenCatalog={() => setPage('home')}
+            search={search}
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+          />
+        ) : <CatalogStatus status={catalogStatus} error={catalogError} onRetry={retryCatalog} />
       )}
 
       {page === 'login' && (
@@ -101,38 +123,48 @@ function App() {
       )}
 
       {page === 'detail' && (
-        <ProductDetail
-          product={selectedProduct}
-          isFavorite={favorites.includes(selectedProduct.id)}
-          onToggleFavorite={toggleFavorite}
-          selectedSize={selectedSize}
-          onSelectSize={setSelectedSize}
-          onAddToCart={addToCart}
-          onBack={() => setPage('home')}
-        />
+        catalogStatus !== 'ready' ? (
+          <CatalogStatus status={catalogStatus} error={catalogError} onRetry={retryCatalog} />
+        ) : selectedProduct ? (
+          <ProductDetail
+            product={selectedProduct}
+            isFavorite={favorites.includes(selectedProduct.id)}
+            onToggleFavorite={toggleFavorite}
+            selectedSize={selectedSize}
+            selectedColor={selectedColor}
+            onSelectSize={setSelectedSize}
+            onSelectColor={selectColor}
+            onAddToCart={addToCart}
+            onBack={() => setPage('home')}
+          />
+        ) : <p className="catalog-status">This product could not be found.</p>
       )}
 
       {page === 'wishlist' && (
-        <Wishlist
-          products={products}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-          onAddToCart={addToCart}
-          onViewDetails={handleDetailsClick}
-          onContinueShopping={() => setPage('home')}
-        />
+        catalogStatus === 'ready' ? (
+          <Wishlist
+            products={products}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            onAddToCart={addToCart}
+            onViewDetails={handleDetailsClick}
+            onContinueShopping={() => setPage('home')}
+          />
+        ) : <CatalogStatus status={catalogStatus} error={catalogError} onRetry={retryCatalog} />
       )}
 
       {page === 'category' && (
-        <Category
-          category={categoryName}
-          products={products.filter((product) => product.category === categoryName)}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-          onAddToCart={addToCart}
-          onViewDetails={handleDetailsClick}
-          onContinueShopping={() => setPage('home')}
-        />
+        catalogStatus === 'ready' ? (
+          <Category
+            category={categoryName}
+            products={products.filter((product) => product.category.toLowerCase() === categoryName.toLowerCase())}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            onAddToCart={addToCart}
+            onViewDetails={handleDetailsClick}
+            onContinueShopping={() => setPage('home')}
+          />
+        ) : <CatalogStatus status={catalogStatus} error={catalogError} onRetry={retryCatalog} />
       )}
 
       {page === 'cart' && (

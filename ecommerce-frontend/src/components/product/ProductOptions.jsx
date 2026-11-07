@@ -1,19 +1,34 @@
-function ProductOptions({ product, selectedSize, onSelectSize }) {
+function ProductOptions({ product, selectedSize, selectedColor, onSelectSize, onSelectColor }) {
+  const availableSizes = product.variants
+    ?.filter((variant) => variant.color === selectedColor)
+    .map((variant) => variant.size)
+    .filter((size, index, sizes) => size && sizes.indexOf(size) === index)
+  const sizes = availableSizes?.length ? availableSizes : product.sizes
+
   return (
     <>
-      {product.colors && (
+      {product.colors?.length > 0 && (
         <div className="option-group">
           <h3>Color</h3>
           <div className="choice-row">
-            {product.colors.map((color) => <button type="button" key={color} className="choice-chip active">{color}</button>)}
+            {product.colors.map((color) => (
+              <button
+                type="button"
+                key={color}
+                className={`choice-chip ${selectedColor === color ? 'selected' : ''}`}
+                onClick={() => onSelectColor(color)}
+              >
+                {color}
+              </button>
+            ))}
           </div>
         </div>
       )}
-      {product.sizes && product.sizes.length > 0 && (
+      {sizes && sizes.length > 0 && (
         <div className="option-group">
           <h3>Size</h3>
           <div className="choice-row">
-            {product.sizes.map((size) => (
+            {sizes.map((size) => (
               <button type="button" key={size} className={`choice-chip ${selectedSize === size ? 'selected' : ''}`} onClick={() => onSelectSize(size)}>
                 {size}
               </button>

@@ -27,6 +27,19 @@ button.brand, button.story-link, .main-nav button, .cart-button, .icon-button, .
 }
 
 .storefront { max-width: 1440px; margin: auto; overflow: hidden; }
+.catalog-status {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  color: var(--muted);
+  text-align: center;
+  font: 15px 'DM Sans', sans-serif;
+}
+.catalog-status p { margin: 0; }
 .announcement {
   background: var(--ink);
   color: #f6f2eb;

@@ -33,9 +33,11 @@ function ProductCard({ product, isFavorite, onToggleFavorite, onAddToCart, onVie
         <strong>{formatCurrency(product.price)}</strong>
       </div>
 
-      <div className="rating">
-        <span>★★★★★</span> {product.rating} <small>({product.reviews})</small>
-      </div>
+      {product.rating != null && (
+        <div className="rating">
+          <span>★★★★★</span> {product.rating} {product.reviews != null && <small>({product.reviews})</small>}
+        </div>
+      )}
 
       <button className="view-details" type="button" onClick={() => onViewDetails(product.id)}>
         View details

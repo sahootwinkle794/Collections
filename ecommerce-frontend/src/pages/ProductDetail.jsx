@@ -4,7 +4,11 @@ import ProductOptions from '../components/product/ProductOptions'
 import ProductActions from '../components/product/ProductActions'
 import ProductFeatures from '../components/product/ProductFeatures'
 
-function ProductDetail({ product, isFavorite, onToggleFavorite, selectedSize, onSelectSize, onAddToCart, onBack }) {
+function ProductDetail({ product, isFavorite, onToggleFavorite, selectedSize, selectedColor, onSelectSize, onSelectColor, onAddToCart, onBack }) {
+  const selectedVariant = product.variants?.find(
+    (variant) => variant.size === selectedSize && variant.color === selectedColor,
+  )
+
   return (
     <section className="detail-page">
       <div className="detail-breadcrumbs">
@@ -18,8 +22,8 @@ function ProductDetail({ product, isFavorite, onToggleFavorite, selectedSize, on
           <p className="eyebrow">{product.category}</p>
           <h2>{product.name}</h2>
           <div className="detail-price-row">
-            <strong>{formatCurrency(product.price)}</strong>
-            <span>★ {product.rating} ({product.reviews} reviews)</span>
+            <strong>{formatCurrency(selectedVariant?.price ?? product.price)}</strong>
+            {product.rating != null && <span>★ {product.rating} {product.reviews != null && `(${product.reviews} reviews)`}</span>}
             <button
               type="button"
               className={`detail-wishlist ${isFavorite ? 'selected' : ''}`}
@@ -30,8 +34,14 @@ function ProductDetail({ product, isFavorite, onToggleFavorite, selectedSize, on
             </button>
           </div>
           <p className="detail-description">{product.description}</p>
-          <ProductOptions product={product} selectedSize={selectedSize} onSelectSize={onSelectSize} />
-          <ProductActions product={product} selectedSize={selectedSize} onAddToCart={onAddToCart} onBack={onBack} />
+          <ProductOptions
+            product={product}
+            selectedSize={selectedSize}
+            selectedColor={selectedColor}
+            onSelectSize={onSelectSize}
+            onSelectColor={onSelectColor}
+          />
+          <ProductActions product={product} selectedSize={selectedSize} selectedColor={selectedColor} onAddToCart={onAddToCart} onBack={onBack} />
           <ProductFeatures details={product.details} />
         </div>
       </div>

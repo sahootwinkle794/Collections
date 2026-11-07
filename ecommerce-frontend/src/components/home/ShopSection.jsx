@@ -1,6 +1,7 @@
 import ProductGrid from '../catalog/ProductGrid'
 
 function ShopSection({ products, favorites, onToggleFavorite, onAddToCart, onViewDetails, search, activeCategory, onCategoryChange }) {
+  const categories = ['All', ...new Set(products.map((product) => product.category).filter(Boolean))]
   const filteredProducts = products.filter((product) => {
     const matchesCategory = activeCategory === 'All' || product.category === activeCategory
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase())
@@ -15,7 +16,7 @@ function ShopSection({ products, favorites, onToggleFavorite, onAddToCart, onVie
       </div>
       <div className="shop-toolbar">
         <div className="category-tabs" role="tablist" aria-label="Product categories">
-          {['All', 'Women', 'Men', 'Kids', 'Home', 'Accessories'].map((category) => (
+          {categories.map((category) => (
             <button className={activeCategory === category ? 'active' : ''} onClick={() => onCategoryChange(category)} type="button" key={category}>
               {category}
             </button>
