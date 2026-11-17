@@ -2,7 +2,7 @@ import brandLogo from '../../assets/G&T.png'
 import { useState } from 'react'
 import MegaMenu from './MegaMenu'
 
-function Header({ search, onSearchChange, cartCount, favoriteCount, user, onOpenCart, onOpenWishlist, onOpenLogin, onLogout, onOpenOrders, onOpenOrderHistory, onOpenCatalog, onOpenCategory }) {
+function Header({ search, onSearchChange, cartCount, favoriteCount, user, onOpenCart, onOpenWishlist, onOpenProfile, onLogout, onOpenOrders, onOpenOrderHistory, onOpenCatalog, onOpenCategory }) {
   const [openMenu, setOpenMenu] = useState(null)
 
   const selectCategory = (category) => {
@@ -52,7 +52,7 @@ function Header({ search, onSearchChange, cartCount, favoriteCount, user, onOpen
         </label>
 
         <div className="profile-menu-wrap">
-          <button className="header-icon-action profile-icon-action" type="button" onClick={onOpenLogin} aria-label={user ? 'Open profile' : 'Log in'}>
+          <button className="header-icon-action profile-icon-action" type="button" onClick={onOpenProfile} aria-label={user ? 'Open profile' : 'Log in'}>
             <span className="header-action-icon">
               <svg className="profile-svg" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="8" r="3.2" />
@@ -65,12 +65,13 @@ function Header({ search, onSearchChange, cartCount, favoriteCount, user, onOpen
             <div className="profile-dropdown">
               <div className="profile-summary">
                 <span className="profile-avatar" aria-hidden="true">
-                  {user.fullName.charAt(0).toUpperCase()}
+                  {user.fullName?.charAt(0).toUpperCase() ?? user.email.charAt(0).toUpperCase()}
                 </span>
                 <div>
                   <strong>Hello {user.fullName}</strong>
                 </div>
               </div>
+              <button type="button" onClick={onOpenProfile}><span>◎</span> My Profile</button>
               <button type="button" onClick={onOpenOrders}>
                 <svg className="profile-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 8h14v12H5z" />
@@ -86,7 +87,6 @@ function Header({ search, onSearchChange, cartCount, favoriteCount, user, onOpen
                 </svg>
                 Order History
               </button>
-              <button type="button" onClick={onLogout}><span>×</span> Delete Account</button>
               <button type="button" onClick={onLogout}><span>↪</span> Logout</button>
             </div>
           )}

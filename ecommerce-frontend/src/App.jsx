@@ -16,6 +16,7 @@ import { useStorefront } from './hooks/useStorefront'
 
 function CatalogStatus({ status, error, onRetry }) {
   return (
+    
     <section className="catalog-status" role={status === 'error' ? 'alert' : 'status'}>
       {status === 'loading' ? (
         <p>Loading the collection…</p>
@@ -38,6 +39,8 @@ function App() {
     page,
     categoryName,
     user,
+    authLoading,
+    loginNotice,
     orders,
     selectedOrder,
     setPage,
@@ -76,12 +79,14 @@ function App() {
       'order-history': 'Order History',
       tracking: 'Track Order',
       detail: 'Product Details',
-      login: 'Login',
+      login: user ? 'My Profile' : 'Login',
     }
 
     const title = page === 'category' ? `${categoryName} Collection` : pageTitles[page] ?? 'Home'
     document.title = `${title} | G&T Collections`
-  }, [page, categoryName])
+  }, [page, categoryName, user])
+
+  if (authLoading) return <p>Loading...</p>
 
   return (
     <main className="storefront">
@@ -93,7 +98,7 @@ function App() {
         favoriteCount={favorites.length}
         onOpenCart={() => setPage('cart')}
         onOpenWishlist={() => setPage('wishlist')}
-        onOpenLogin={() => setPage('login')}
+        onOpenProfile={() => setPage('login')}
         onLogout={logout}
         onOpenOrders={() => setPage('orders')}
         onOpenOrderHistory={() => setPage('order-history')}
@@ -119,7 +124,7 @@ function App() {
       )}
 
       {page === 'login' && (
-        <Login user={user} onLogin={login} onLogout={logout} />
+        <Login user={user} loginNotice={loginNotice} onLogin={login} onLogout={logout} />
       )}
 
       {page === 'detail' && (

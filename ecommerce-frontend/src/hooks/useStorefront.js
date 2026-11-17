@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { fetchCatalog } from '../api/catalog'
+import { loginWithGoogle, logout as logoutSession, restoreSession } from '../authApi'
 
 export function useStorefront() {
   const location = useLocation()
@@ -16,15 +17,39 @@ export function useStorefront() {
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
+  const [authLoading, setAuthLoading] = useState(true)
   const [orders, setOrders] = useState(() => {
     const savedOrders = window.localStorage.getItem('gt-orders')
     return savedOrders ? JSON.parse(savedOrders) : []
   })
-  const [user, setUser] = useState(() => {
-    const savedUser = window.localStorage.getItem('gt-user') ?? window.sessionStorage.getItem('gt-user')
-    const parsedUser = savedUser ? JSON.parse(savedUser) : null
-    return parsedUser?.fullName ? parsedUser : null
-  })
+  const [user, setUser] = useState(null)
+  const pendingAction = useRef(null)
+
+  useEffect(() => {
+    let isCurrentRequest = true
+
+    restoreSession()
+      .then((session) => {
+        if (isCurrentRequest) {
+          setUser(session ? {
+            fullName: session.fullName,
+            email: session.email,
+            role: session.role,
+          } : null)
+        }
+      })
+      .catch((error) => {
+        console.error('Could not restore the login session.', error)
+        if (isCurrentRequest) setUser(null)
+      })
+      .finally(() => {
+        if (isCurrentRequest) setAuthLoading(false)
+      })
+
+    return () => {
+      isCurrentRequest = false
+    }
+  }, [])
 
   useEffect(() => {
     let isCurrentRequest = true
@@ -66,6 +91,12 @@ export function useStorefront() {
     }
   }, [])
 
+  useEffect(() => {
+    if (location.pathname !== '/login' && !user) {
+      pendingAction.current = null
+    }
+  }, [location.pathname, user])
+
   const categorySlug = location.pathname.startsWith('/category/')
     ? location.pathname.split('/')[2]
     : ''
@@ -94,6 +125,10 @@ export function useStorefront() {
           ? 'category'
         : 'home'
 
+  const loginNotice = page === 'login' && pendingAction.current
+    ? 'Please sign in with Google to add products to your cart or wishlist.'
+    : ''
+
   const setPage = (nextPage) => {
     const routes = {
       home: '/',
@@ -114,20 +149,37 @@ export function useStorefront() {
 
   const openTracking = (id) => navigate(`/orders/${id}`)
 
-  const login = (credentials) => {
-    const nextUser = { fullName: credentials.fullName, email: credentials.email }
-    setUser(nextUser)
-    window.localStorage.removeItem('gt-user')
-    window.sessionStorage.removeItem('gt-user')
-    const storage = credentials.rememberMe ? window.localStorage : window.sessionStorage
-    storage.setItem('gt-user', JSON.stringify(nextUser))
-    navigate('/')
+  const requestLogin = (action) => {
+    pendingAction.current = { ...action, returnTo: location.pathname }
+    navigate('/login')
   }
 
-  const logout = () => {
+  const login = async () => {
+    const session = await loginWithGoogle()
+    const nextUser = {
+      fullName: session.fullName,
+      email: session.email,
+      role: session.role,
+    }
+    const action = pendingAction.current
+    pendingAction.current = null
+    setUser(nextUser)
+
+    if (action?.type === 'cart') {
+      addToCartForUser(action.product, action.size, action.color)
+      return
+    }
+
+    navigate(action?.returnTo || '/')
+    if (action?.type === 'favorite') toggleFavoriteForUser(action.id)
+  }
+
+  const logout = async () => {
+    await logoutSession()
     setUser(null)
-    window.localStorage.removeItem('gt-user')
-    window.sessionStorage.removeItem('gt-user')
+    setCart([])
+    setFavorites([])
+    pendingAction.current = null
     navigate('/login')
   }
 
@@ -157,7 +209,7 @@ export function useStorefront() {
   const shipping = cart.length > 0 ? 12 : 0
   const total = subtotal + shipping
 
-  const toggleFavorite = (id) => {
+  function toggleFavoriteForUser(id) {
     setFavorites((current) =>
       current.includes(id)
         ? current.filter((favorite) => favorite !== id)
@@ -165,7 +217,15 @@ export function useStorefront() {
     )
   }
 
-  const addToCart = (product, size = product.sizes?.[0] ?? 'One size', color = product.colors?.[0] ?? '') => {
+  const toggleFavorite = (id) => {
+    if (!user) {
+      requestLogin({ type: 'favorite', id })
+      return
+    }
+    toggleFavoriteForUser(id)
+  }
+
+  function addToCartForUser(product, size = product.sizes?.[0] ?? 'One size', color = product.colors?.[0] ?? '') {
     const selectedVariantSize = size || product.sizes?.[0] || 'One size'
     const selectedVariantColor = color || product.colors?.[0] || ''
     const variant = product.variants?.find(
@@ -192,6 +252,14 @@ export function useStorefront() {
     })
 
     navigate('/cart')
+  }
+
+  const addToCart = (product, size, color) => {
+    if (!user) {
+      requestLogin({ type: 'cart', product, size, color })
+      return
+    }
+    addToCartForUser(product, size, color)
   }
 
   const updateCartQuantity = (id, size, color, delta) => {
@@ -248,6 +316,8 @@ export function useStorefront() {
     page,
     categoryName,
     user,
+    authLoading,
+    loginNotice,
     orders,
     selectedOrder: orders.find((order) => order.id === orderId) ?? null,
     setPage,

@@ -1,7 +1,7 @@
 import LoginForm from '../components/auth/LoginForm'
 import brandLogo from '../assets/G&T.png'
 
-function Login({ user, onLogin, onLogout }) {
+function Login({ user, loginNotice, onLogin, onLogout }) {
   return (
     <section className="auth-page">
       <div className="auth-art" aria-hidden="true">
@@ -10,7 +10,7 @@ function Login({ user, onLogin, onLogout }) {
         <span className="auth-art-line auth-art-line-two" />
         <img className="auth-art-logo" src={brandLogo} alt="G&T Collections" />
       </div>
-      <LoginForm user={user} onLogin={onLogin} onLogout={onLogout} />
+      <LoginForm user={user} loginNotice={loginNotice} onLogin={onLogin} onLogout={onLogout} />
     </section>
   )
 }
